@@ -6,8 +6,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Plank 30">
-  <link rel="manifest" href="manifest.json">
   <title>30-Day Plank Challenge</title>
+  
+  <!-- Web App Manifest for iOS PWA & Web Push -->
+  <link rel="manifest" href="manifest.json">
+
   <style>
     :root {
       --bg: #09090b;
@@ -154,11 +157,15 @@
   </div>
 
   <script>
-    
+    // Register Service Worker for iOS PWA Support
     if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
-    
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('Service Worker registered successfully:', reg))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      });
+    }
+
     const plan = [
       20, 20, 30, 30, 40, 0,
       45, 45, 60, 60, 90, 0,
@@ -173,7 +180,7 @@
     let isRunning = false;
     let completedDays = JSON.parse(localStorage.getItem('plank_completed') || '[]');
     let audioCtx = null;
-      
+
     const chimeAudio = new Audio("data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVBvAAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////");
 
     function getAudioContext() {
@@ -201,6 +208,13 @@
     function init() {
       const today = new Date();
       document.getElementById('currentDateStr').innerText = today.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+      
+      // Load saved reminder time back into the input field
+      const savedTime = localStorage.getItem('plank_reminder_time');
+      if (savedTime) {
+        document.getElementById('reminderTime').value = savedTime;
+      }
+
       renderGrid();
       loadDay(0);
     }
@@ -404,15 +418,29 @@
     function requestNotify() {
       if ('Notification' in window) {
         Notification.requestPermission().then(p => {
-          alert(p === 'granted' ? 'Notifications enabled!' : 'Notification access denied.');
+          if (p === 'granted') {
+            alert('Notifications enabled!');
+            saveReminder(); // Ensure notification is scheduled upon permission grant
+          } else {
+            alert('Notification access denied.');
+          }
         });
       } else {
-        alert('Web Notifications are only supported when saved to Home Screen on iOS 16.4+');
+        alert('Web Notifications require saving this app to your Home Screen on iOS 16.4+');
       }
     }
 
     function saveReminder() {
-      localStorage.setItem('plank_reminder_time', document.getElementById('reminderTime').value);
+      const timeVal = document.getElementById('reminderTime').value;
+      localStorage.setItem('plank_reminder_time', timeVal);
+
+      // Send the updated time to the Service Worker
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SET_REMINDER',
+          time: timeVal
+        });
+      }
     }
 
     init();
