@@ -14,6 +14,7 @@
       --accent: #2563eb;
       --accent-hover: #1d4ed8;
       --success: #10b981;
+      --danger: #ef4444;
       --warning: #f59e0b;
       --text: #f4f4f5;
       --subtext: #a1a1aa;
@@ -21,9 +22,10 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     body { background-color: var(--bg); color: var(--text); padding: 16px; max-width: 500px; margin: 0 auto; min-height: 100vh; position: relative; }
-    header { text-align: center; margin-bottom: 20px; }
-    h1 { font-size: 24px; font-weight: 700; }
-    .subtitle { color: var(--subtext); font-size: 14px; margin-top: 4px; }
+    
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 700; }
+    .subtitle { color: var(--subtext); font-size: 13px; margin-top: 2px; }
     
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
     
@@ -33,6 +35,8 @@
     button:active { transform: scale(0.98); }
     button.secondary { background: #27272a; color: var(--text); }
     button.success { background: var(--success); }
+    button.danger { background: var(--danger); }
+    button.outline-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 6px 12px; font-size: 12px; border-radius: 8px; }
     
     .reminder-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     input[type="time"] { background: #27272a; border: 1px solid var(--border); color: white; padding: 8px 12px; border-radius: 8px; font-size: 16px; }
@@ -73,8 +77,11 @@
 <body>
 
   <header>
-    <h1>30-Day Plank Challenge</h1>
-    <p class="subtitle" id="currentDateStr"></p>
+    <div>
+      <h1>30-Day Plank Challenge</h1>
+      <p class="subtitle" id="currentDateStr"></p>
+    </div>
+    <button class="outline-danger" onclick="promptResetChallenge()">Reset All</button>
   </header>
 
   <div class="card">
@@ -117,25 +124,31 @@
       
       <div class="medallion-container">
         <svg id="characterSvg" width="120" height="120" viewBox="0 0 100 100">
-          <!-- Head -->
           <circle cx="50" cy="22" r="10" fill="#fde047" />
-          <!-- Smile -->
           <path d="M 46 24 Q 50 28 54 24" stroke="#78350f" stroke-width="1.5" fill="none" />
-          <!-- Eyes -->
           <circle cx="46" cy="20" r="1" fill="#78350f" />
           <circle cx="54" cy="20" r="1" fill="#78350f" />
-          <!-- Torso -->
           <path d="M 38 34 L 62 34 L 58 75 L 42 75 Z" fill="#fde047" stroke="#78350f" stroke-width="1.5" />
-          <!-- Arms flexing -->
           <path d="M 38 36 Q 24 30 26 18 Q 32 18 36 28" fill="#fde047" stroke="#78350f" stroke-width="1.5" />
           <path d="M 62 36 Q 76 30 74 18 Q 68 18 64 28" fill="#fde047" stroke="#78350f" stroke-width="1.5" />
-          <!-- Dynamic Ab Group -->
           <g id="abGroup" stroke="#78350f" stroke-width="1.5" fill="none"></g>
         </svg>
       </div>
 
       <p style="font-size: 15px; font-weight: 600; margin-bottom: 16px; color: #f4f4f5;" id="modalDesc">You earned 1 of your 6-pack abs!</p>
       <button class="success" style="width: 100%; padding: 12px;" onclick="closeModal()">Keep It Up! 🔥</button>
+    </div>
+  </div>
+
+  <!-- Reset Confirmation Modal -->
+  <div class="modal-overlay" id="resetModal">
+    <div class="modal-card" style="border-color: var(--danger);">
+      <h2 style="font-size: 20px; color: #fca5a5;">Reset Challenge?</h2>
+      <p style="font-size: 14px; color: #a1a1aa; margin: 12px 0 20px;">This will erase all completed days and reset your progress back to Day 1. This action cannot be undone.</p>
+      <div style="display: flex; gap: 8px;">
+        <button class="secondary" style="flex: 1;" onclick="closeResetModal()">Cancel</button>
+        <button class="danger" style="flex: 1;" onclick="confirmResetChallenge()">Yes, Reset</button>
+      </div>
     </div>
   </div>
 
@@ -281,7 +294,6 @@
       }
       localStorage.setItem('plank_completed', JSON.stringify(completedDays));
       
-      // Check for milestone popup trigger on new completions
       if (!wasCompleted && completedDays.includes(currentDayIndex)) {
         checkMilestone(completedDays.length);
       }
@@ -301,14 +313,13 @@
       const abGroup = document.getElementById('abGroup');
       abGroup.innerHTML = '';
 
-      // Define 6 ab muscle SVG paths
       const abs = [
-        '<rect x="42" y="42" width="7" height="6" rx="2" />', // Top Left
-        '<rect x="51" y="42" width="7" height="6" rx="2" />', // Top Right
-        '<rect x="42" y="50" width="7" height="6" rx="2" />', // Mid Left
-        '<rect x="51" y="50" width="7" height="6" rx="2" />', // Mid Right
-        '<rect x="42" y="58" width="7" height="6" rx="2" />', // Lower Left
-        '<rect x="51" y="58" width="7" height="6" rx="2" />'  // Lower Right
+        '<rect x="42" y="42" width="7" height="6" rx="2" />',
+        '<rect x="51" y="42" width="7" height="6" rx="2" />',
+        '<rect x="42" y="50" width="7" height="6" rx="2" />',
+        '<rect x="51" y="50" width="7" height="6" rx="2" />',
+        '<rect x="42" y="58" width="7" height="6" rx="2" />',
+        '<rect x="51" y="58" width="7" height="6" rx="2" />'
       ];
 
       for (let i = 0; i < abCount; i++) {
@@ -330,6 +341,21 @@
 
     function closeModal() {
       document.getElementById('milestoneModal').classList.remove('open');
+    }
+
+    function promptResetChallenge() {
+      document.getElementById('resetModal').classList.add('open');
+    }
+
+    function closeResetModal() {
+      document.getElementById('resetModal').classList.remove('open');
+    }
+
+    function confirmResetChallenge() {
+      completedDays = [];
+      localStorage.removeItem('plank_completed');
+      closeResetModal();
+      loadDay(0);
     }
 
     function playChime() {
