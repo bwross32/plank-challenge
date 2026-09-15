@@ -101,7 +101,9 @@
     let completedDays = JSON.parse(localStorage.getItem('plank_completed') || '[]');
     let audioCtx = null;
 
-    // iOS Audio Context Unlocker
+    // Embedded chime audio fallback for iOS Safari compatibility
+    const chimeAudio = new Audio("data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVBvAAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////AAD/////");
+
     function getAudioContext() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -111,6 +113,19 @@
       }
       return audioCtx;
     }
+
+    // Touch listener to prime audio playback engines on iOS
+    function unlockAudio() {
+      getAudioContext();
+      chimeAudio.play().then(() => {
+        chimeAudio.pause();
+        chimeAudio.currentTime = 0;
+      }).catch(() => {});
+      document.removeEventListener('touchstart', unlockAudio);
+      document.removeEventListener('click', unlockAudio);
+    }
+    document.addEventListener('touchstart', unlockAudio, { once: true });
+    document.addEventListener('click', unlockAudio, { once: true });
 
     function init() {
       const today = new Date();
@@ -170,7 +185,7 @@
 
     function toggleTimer() {
       if (plan[currentDayIndex] === 0) return;
-      getAudioContext(); // Pre-unlock audio on user tap
+      getAudioContext();
 
       if (isRunning) {
         clearInterval(timer);
@@ -217,33 +232,37 @@
     function playChime() {
       try {
         const ctx = getAudioContext();
-        const now = ctx.currentTime;
-        
-        // Osc 1 (D5)
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(587.33, now);
-        gain1.gain.setValueAtTime(0.4, now);
-        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.8);
+        if (ctx && ctx.state === 'running') {
+          const now = ctx.currentTime;
+          
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(587.33, now);
+          gain1.gain.setValueAtTime(0.5, now);
+          gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          osc1.start(now);
+          osc1.stop(now + 0.8);
 
-        // Osc 2 (A5)
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(880, now + 0.2);
-        gain2.gain.setValueAtTime(0.4, now + 0.2);
-        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.start(now + 0.2);
-        osc2.stop(now + 1.2);
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(880, now + 0.2);
+          gain2.gain.setValueAtTime(0.5, now + 0.2);
+          gain2.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.start(now + 0.2);
+          osc2.stop(now + 1.2);
+        } else {
+          chimeAudio.currentTime = 0;
+          chimeAudio.play();
+        }
       } catch(e) {
-        console.error("Audio playback error:", e);
+        chimeAudio.currentTime = 0;
+        chimeAudio.play();
       }
     }
 
